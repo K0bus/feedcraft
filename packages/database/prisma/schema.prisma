@@ -1,0 +1,112 @@
+// Prisma Schema for FeedCrafter
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(uuid())
+  discordId    String   @unique
+  username     String
+  email        String?
+  avatar       String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@map("users")
+}
+
+model Game {
+  id          String   @id @default(uuid())
+  igdbId      Int      @unique
+  name        String
+  slug        String?  @unique
+  coverUrl    String?
+  steamAppId  String?
+  epicSlug    String?
+  bnetSlug    String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  subscriptions Subscription[]
+  newsFeeds     NewsFeed[]
+
+  @@map("games")
+}
+
+model Subscription {
+  id                String   @id @default(uuid())
+  userId            String
+  gameId            String
+  discordWebhookUrl String
+  guildName         String?
+  status            String   @default("ACTIVE") // ACTIVE, INVALID
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  dispatchLogs DispatchLog[]
+
+  @@unique([userId, gameId])
+  @@map("subscriptions")
+}
+
+model NewsFeed {
+  id          String   @id @default(uuid())
+  gameId      String
+  title       String
+  content     String   @db.Text
+  url         String
+  publishedAt DateTime
+  source      String   // e.g. "STEAM", "EPIC", "RSS"
+  externalId  String   // Original news ID
+  createdAt   DateTime @default(now())
+
+  game         Game          @relation(fields: [gameId], references: [id], onDelete: Cascade)
+  caches       NewsCache[]
+  dispatchLogs DispatchLog[]
+
+  @@unique([gameId, externalId])
+  @@map("news_feeds")
+}
+
+model NewsCache {
+  id                String   @id @default(uuid())
+  newsFeedId        String
+  language          String   // e.g. "fr", "es", "de"
+  translatedTitle   String
+  translatedContent String   @db.Text
+  summary           String?  @db.Text
+  createdAt         DateTime @default(now())
+
+  newsFeed NewsFeed @relation(fields: [newsFeedId], references: [id], onDelete: Cascade)
+
+  @@unique([newsFeedId, language])
+  @@map("news_caches")
+}
+
+model DispatchLog {
+  id                String   @id @default(uuid())
+  subscriptionId    String
+  newsFeedId        String
+  translatedTitle   String?
+  translatedContent String?  @db.Text
+  summary           String?  @db.Text
+  status            String   @default("SUCCESS") // SUCCESS, FAILED
+  errorMessage      String?
+  sentAt            DateTime @default(now())
+
+  subscription Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  newsFeed     NewsFeed     @relation(fields: [newsFeedId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriptionId, newsFeedId])
+  @@map("dispatch_logs")
+}

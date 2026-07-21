@@ -1,0 +1,21 @@
+{
+  "name": "feedcrafter-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Service automatisé de diffusion d'actualités et de patch notes de jeux vidéo pour Discord",
+  "scripts": {
+    "dev": "pnpm --parallel --recursive run dev",
+    "build": "pnpm --recursive run build",
+    "lint": "pnpm --recursive run lint",
+    "db:generate": "pnpm --filter @feedcrafter/database run db:generate",
+    "db:migrate": "pnpm --filter @feedcrafter/database run db:migrate",
+    "db:studio": "pnpm --filter @feedcrafter/database run db:studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=8.0.0"
+  }
+}
