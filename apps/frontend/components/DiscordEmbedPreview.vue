@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import type { NewsPreviewResponse } from '@feedcrafter/shared'
 
-const props = defineProps<{
+defineProps<{
   data: NewsPreviewResponse
 }>()
 

@@ -148,7 +148,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
       };
 
       return userDto;
-    } catch (err) {
+    } catch {
       return reply.status(401).send({ error: 'Session invalide ou expirée' });
     }
   });

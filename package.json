@@ -2,18 +2,24 @@
   "name": "feedcrafter-monorepo",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "Service automatisé de diffusion d'actualités et de patch notes de jeux vidéo pour Discord",
   "scripts": {
     "dev": "pnpm --parallel --recursive run dev",
     "build": "pnpm --recursive run build",
-    "lint": "pnpm --recursive run lint",
+    "lint": "eslint .",
     "db:generate": "pnpm --filter @feedcrafter/database run db:generate",
     "db:migrate": "pnpm --filter @feedcrafter/database run db:migrate",
     "db:studio": "pnpm --filter @feedcrafter/database run db:studio",
     "docker:push": "bash scripts/docker-push.sh"
   },
   "devDependencies": {
-    "typescript": "^5.4.5"
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "eslint": "^10.7.0",
+    "eslint-plugin-vue": "^10.10.0",
+    "typescript": "^5.4.5",
+    "vue-eslint-parser": "^10.4.1"
   },
   "engines": {
     "node": ">=20.0.0",

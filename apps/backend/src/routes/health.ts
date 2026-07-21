@@ -7,7 +7,7 @@ const healthRoutes: FastifyPluginAsync = async (fastify) => {
       // Test DB connection
       await db.$queryRaw`SELECT 1`;
       return { status: 'ok', timestamp: new Date().toISOString(), db: 'connected' };
-    } catch (err) {
+    } catch {
       reply.status(500);
       return { status: 'error', timestamp: new Date().toISOString(), db: 'disconnected' };
     }

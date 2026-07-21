@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { GameDTO } from '@feedcrafter/shared'
 
-const props = defineProps<{
+defineProps<{
   game: GameDTO & { platform?: string; isSubscribed?: boolean }
 }>()
 

@@ -1,4 +1,4 @@
-export default defineNuxtRouteMiddleware(async (to, from) => {
+export default defineNuxtRouteMiddleware(async () => {
   const { user, fetchUser } = useAuth()
 
   // Fetch user profile if not already in state

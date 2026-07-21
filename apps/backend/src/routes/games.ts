@@ -73,7 +73,7 @@ const gameRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // GET /api/games - List saved games in local PostgreSQL DB
-  fastify.get('/', async (request, reply) => {
+  fastify.get('/', async (_request, _reply) => {
     const games = await db.game.findMany({
       orderBy: { name: 'asc' }
     });

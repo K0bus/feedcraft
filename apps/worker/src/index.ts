@@ -10,7 +10,7 @@ import Redis from 'ioredis';
 import { translateAndSummarizeNews } from './services/gemini.js';
 import { fetchLatestRawNews } from './services/newsFetcher.js';
 import { db } from '@feedcrafter/database';
-import { DispatchDiscordWebhookJobData, FetchNewsJobData } from '@feedcrafter/shared';
+import { DispatchDiscordWebhookJobData } from '@feedcrafter/shared';
 
 // Redis Connection
 const redisConnection = new Redis({

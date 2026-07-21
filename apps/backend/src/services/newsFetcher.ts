@@ -62,7 +62,7 @@ function cleanUrl(rawUrl: any, steamAppId?: string | null): string {
     try {
       const parsed = new URL(cleaned);
       return parsed.toString();
-    } catch (err) {
+    } catch {
       // Fallback below
     }
   }

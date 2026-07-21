@@ -19,13 +19,13 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const decoded = fastify.jwt.verify<{ userId: string }>(token);
       return decoded.userId;
-    } catch (err) {
+    } catch {
       return null;
     }
   };
 
   // GET /api/subscriptions - Get subscriptions for current logged-in user
-  fastify.get('/', async (request, reply) => {
+  fastify.get('/', async (request, _reply) => {
     const userId = getAuthUserId(request);
     
     // If no authenticated user, return all or filtered for guest demo
@@ -286,7 +286,7 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
   });
 
   // GET /api/subscriptions/logs - Return dispatch logs history
-  fastify.get('/logs', async (request, reply) => {
+  fastify.get('/logs', async (request, _reply) => {
     const userId = getAuthUserId(request);
 
     const logs = await db.dispatchLog.findMany({
@@ -313,7 +313,7 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
         where: { id }
       });
       return { success: true };
-    } catch (err) {
+    } catch {
       return reply.notFound('Abonnement introuvable');
     }
   });
