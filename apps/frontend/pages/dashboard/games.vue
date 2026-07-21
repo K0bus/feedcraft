@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import type { GameDTO, CreateSubscriptionPayload } from '@feedcrafter/shared'
 
 definePageMeta({
@@ -17,7 +17,20 @@ const games = ref<GameDTO[]>([])
 
 const isModalOpen = ref(false)
 const isPreviewModalOpen = ref(false)
+const isDetailModalOpen = ref(false)
 const selectedGame = ref<GameDTO | null>(null)
+
+// Filter games by active platform tab
+const filteredGames = computed(() => {
+  if (activePlatform.value === 'all') return games.value
+  return games.value.filter((g) => {
+    const p = (g.platform || '').toLowerCase()
+    if (activePlatform.value === 'steam') return !!g.steamAppId || p === 'steam'
+    if (activePlatform.value === 'epic') return !!g.epicSlug || p === 'epic'
+    if (activePlatform.value === 'bnet') return !!g.bnetSlug || p === 'bnet' || p.includes('blizzard') || p.includes('battle.net')
+    return p === activePlatform.value
+  })
+})
 
 // Fetch popular games on mount
 const fetchPopularGames = async () => {
@@ -69,6 +82,11 @@ const handleSubscribeClick = (game: GameDTO) => {
 const handlePreviewClick = (game: GameDTO) => {
   selectedGame.value = game
   isPreviewModalOpen.value = true
+}
+
+const handleDetailsClick = (game: GameDTO) => {
+  selectedGame.value = game
+  isDetailModalOpen.value = true
 }
 
 const handleSaveWebhook = async (data: { webhookUrl: string; language: string; channelName?: string }) => {
@@ -167,13 +185,14 @@ const handleSaveWebhook = async (data: { webhookUrl: string; language: string; c
       <p class="text-sm font-semibold animate-pulse">Chargement du catalogue IGDB...</p>
     </div>
 
-    <div v-else-if="games.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+    <div v-else-if="filteredGames.length > 0" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
       <GameCard
-        v-for="game in games"
+        v-for="game in filteredGames"
         :key="game.igdbId"
         :game="game"
         @subscribe="handleSubscribeClick"
         @preview="handlePreviewClick"
+        @details="handleDetailsClick"
       />
     </div>
 
@@ -195,6 +214,13 @@ const handleSaveWebhook = async (data: { webhookUrl: string; language: string; c
       :is-open="isPreviewModalOpen"
       :game="selectedGame"
       @close="isPreviewModalOpen = false"
+    />
+
+    <!-- IGDB Game Details & Raw JSON Modal -->
+    <IGDBDetailModal
+      :is-open="isDetailModalOpen"
+      :game="selectedGame"
+      @close="isDetailModalOpen = false"
     />
   </div>
 </template>

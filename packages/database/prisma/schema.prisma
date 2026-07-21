@@ -29,6 +29,7 @@ model Game {
   name        String
   slug        String?  @unique
   coverUrl    String?
+  artworkUrl  String?
   steamAppId  String?
   epicSlug    String?
   bnetSlug    String?

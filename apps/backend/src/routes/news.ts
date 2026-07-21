@@ -3,6 +3,7 @@ import { db } from '@feedcrafter/database';
 import { NewsPreviewRequest, NewsPreviewResponse } from '@feedcrafter/shared';
 import { fetchLatestRawNews } from '../services/newsFetcher.js';
 import { translateForDiscord } from '../services/geminiTranslator.js';
+import { getIGDBGameDetails, fetchGameArtworkUrl } from '../services/igdb.js';
 
 const newsRoutes: FastifyPluginAsync = async (fastify) => {
   // POST /api/news/preview - Generate live news preview & Gemini translation
@@ -11,6 +12,7 @@ const newsRoutes: FastifyPluginAsync = async (fastify) => {
 
     let gameName = body.gameName || 'Jeu';
     let steamAppId = body.steamAppId || null;
+    let artworkUrl: string | null = null;
 
     // Fetch game metadata from DB if gameId or igdbId is provided
     if (body.gameId) {
@@ -18,12 +20,25 @@ const newsRoutes: FastifyPluginAsync = async (fastify) => {
       if (dbGame) {
         gameName = dbGame.name;
         steamAppId = dbGame.steamAppId || steamAppId;
+        artworkUrl = dbGame.artworkUrl || null;
+        if (!artworkUrl && dbGame.igdbId) {
+          artworkUrl = await fetchGameArtworkUrl(dbGame.igdbId);
+        }
       }
     } else if (body.igdbId) {
       const dbGame = await db.game.findUnique({ where: { igdbId: body.igdbId } });
       if (dbGame) {
         gameName = dbGame.name;
         steamAppId = dbGame.steamAppId || steamAppId;
+        artworkUrl = dbGame.artworkUrl || null;
+      }
+      const details = await getIGDBGameDetails(body.igdbId);
+      if (details?.normalized) {
+        steamAppId = details.normalized.steamAppId || steamAppId;
+        gameName = details.normalized.name || gameName;
+        if (details.normalized.artworks && details.normalized.artworks.length > 0) {
+          artworkUrl = details.normalized.artworks[0];
+        }
       }
     }
 
@@ -52,6 +67,7 @@ const newsRoutes: FastifyPluginAsync = async (fastify) => {
           description: translation.translatedContent,
           color: 0x6366f1, // Hex color for Discord Embed lateral bar (#6366F1)
           url: rawArticle.url,
+          thumbnail: artworkUrl ? { url: artworkUrl } : undefined,
           footerText: 'Propulsé par FeedCrafter',
           timestamp: new Date(rawArticle.publishedAt).toISOString()
         }

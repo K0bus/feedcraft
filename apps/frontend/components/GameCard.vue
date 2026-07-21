@@ -8,6 +8,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'subscribe', game: GameDTO): void
   (e: 'preview', game: GameDTO): void
+  (e: 'details', game: GameDTO): void
 }>()
 </script>
 
@@ -25,20 +26,30 @@ const emit = defineEmits<{
       
       <!-- Top Badges -->
       <div class="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
-        <PlatformBadge :platform="game.platform || 'steam'" size="sm" />
+        <PlatformBadge :platform="game.platform || 'rss'" size="sm" />
         <span v-if="game.isSubscribed" class="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 backdrop-blur-md">
           Abonné
         </span>
       </div>
 
-      <!-- Quick Preview Overlay Button -->
-      <button
-        @click.stop="emit('preview', game)"
-        class="absolute bottom-3 right-3 px-2.5 py-1 rounded-lg bg-dark-950/80 hover:bg-dark-900 text-slate-200 text-[11px] font-semibold backdrop-blur-md border border-dark-700 flex items-center gap-1 transition-all opacity-90 group-hover:opacity-100 shadow-md"
-        title="Prévisualiser la dernière actualité"
-      >
-        <span>👁 Preview</span>
-      </button>
+      <!-- Quick Action Overlay Buttons -->
+      <div class="absolute bottom-3 right-3 flex items-center gap-1.5">
+        <button
+          @click.stop="emit('details', game)"
+          class="px-2.5 py-1 rounded-lg bg-dark-950/80 hover:bg-brand-600 text-slate-200 text-[11px] font-semibold backdrop-blur-md border border-dark-700 hover:border-brand-500 flex items-center gap-1 transition-all shadow-md"
+          title="Voir la fiche détaillée & le JSON IGDB"
+        >
+          <span>📋 Détails IGDB</span>
+        </button>
+
+        <button
+          @click.stop="emit('preview', game)"
+          class="px-2.5 py-1 rounded-lg bg-dark-950/80 hover:bg-dark-900 text-slate-200 text-[11px] font-semibold backdrop-blur-md border border-dark-700 flex items-center gap-1 transition-all shadow-md"
+          title="Prévisualiser la dernière actualité"
+        >
+          <span>👁 News</span>
+        </button>
+      </div>
     </div>
 
     <!-- Details Body -->

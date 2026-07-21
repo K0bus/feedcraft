@@ -3,6 +3,7 @@ import { db } from '@feedcrafter/database';
 import { CreateSubscriptionPayload } from '@feedcrafter/shared';
 import { fetchLatestRawNews } from '../services/newsFetcher.js';
 import { translateForDiscord } from '../services/geminiTranslator.js';
+import { fetchGameArtworkUrl } from '../services/igdb.js';
 
 const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
   // Helper to get authenticated user ID from session cookie or Bearer token
@@ -107,12 +108,18 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
       return reply.badRequest('Champs obligatoires manquants (igdbId, gameName, discordWebhookUrl)');
     }
 
+    let artworkUrl = body.artworkUrl || null;
+    if (!artworkUrl && body.igdbId) {
+      artworkUrl = await fetchGameArtworkUrl(body.igdbId);
+    }
+
     // 1. Upsert Game by igdbId
     const game = await db.game.upsert({
       where: { igdbId: body.igdbId },
       update: {
         name: body.gameName,
         coverUrl: body.coverUrl,
+        artworkUrl: artworkUrl || undefined,
         steamAppId: body.steamAppId || null,
         epicSlug: body.epicSlug || null,
         bnetSlug: body.bnetSlug || null
@@ -121,6 +128,7 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
         igdbId: body.igdbId,
         name: body.gameName,
         coverUrl: body.coverUrl,
+        artworkUrl,
         steamAppId: body.steamAppId || null,
         epicSlug: body.epicSlug || null,
         bnetSlug: body.bnetSlug || null
@@ -186,6 +194,17 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
         return reply.badRequest('Jeu non associé à cet abonnement');
       }
 
+      let artworkUrl: string | null = subscription.game.artworkUrl || null;
+      if (!artworkUrl && subscription.game.igdbId) {
+        artworkUrl = await fetchGameArtworkUrl(subscription.game.igdbId);
+        if (artworkUrl) {
+          await db.game.update({
+            where: { id: subscription.game.id },
+            data: { artworkUrl }
+          });
+        }
+      }
+
       const rawArticle = await fetchLatestRawNews({
         steamAppId: subscription.game.steamAppId,
         name: subscription.game.name
@@ -219,13 +238,14 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
       const translation = await translateForDiscord(rawArticle);
 
       // 6. Deliver embed directly to Discord Webhook
-      const discordPayload = {
+      const discordPayload: any = {
         embeds: [
           {
             title: `🎮 [${subscription.game.name}] ${translation.translatedTitle}`,
             description: translation.translatedContent || translation.summary || 'Nouvelle mise à jour disponible !',
             url: rawArticle.url,
             color: 0x6366f1,
+            thumbnail: artworkUrl ? { url: artworkUrl } : undefined,
             footer: { text: 'Propulsé par FeedCrafter (Re-dispatch après purge du cache)' },
             timestamp: rawArticle.publishedAt ? new Date(rawArticle.publishedAt).toISOString() : new Date().toISOString()
           }

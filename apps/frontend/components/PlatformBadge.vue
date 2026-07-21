@@ -24,12 +24,40 @@ const badgeConfig = computed(() => {
     case 'bnet':
     case 'blizzard':
     case 'battlenet':
+    case 'battle.net':
       return {
         label: 'Battle.net',
         bg: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
         icon: 'Flame'
       }
+    case 'gog':
+      return {
+        label: 'GOG',
+        bg: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+        icon: 'Store'
+      }
+    case 'playstation':
+    case 'ps5':
+    case 'ps4':
+      return {
+        label: 'PlayStation',
+        bg: 'bg-blue-600/10 text-blue-400 border-blue-500/20',
+        icon: 'Gamepad'
+      }
+    case 'xbox':
+      return {
+        label: 'Xbox',
+        bg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+        icon: 'Box'
+      }
     default:
+      if (p && p !== 'rss') {
+        return {
+          label: props.platform,
+          bg: 'bg-indigo-500/10 text-indigo-300 border-indigo-500/20',
+          icon: 'Globe'
+        }
+      }
       return {
         label: 'RSS Feed',
         bg: 'bg-amber-500/10 text-amber-400 border-amber-500/20',

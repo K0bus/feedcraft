@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Emoji:wght@400;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -10,6 +12,10 @@
   h1, h2, h3, h4, h5, h6 {
     @apply font-outfit tracking-tight;
   }
+}
+
+.font-noto-emoji {
+  font-family: 'Noto Emoji', 'Apple Color Emoji', 'Segoe UI Emoji', sans-serif;
 }
 
 /* Glassmorphism & Cyberpunk Design System Utilities */

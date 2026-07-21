@@ -1,6 +1,6 @@
 import { FastifyPluginAsync } from 'fastify';
 import { db } from '@feedcrafter/database';
-import { getPopularIGDBGames, searchIGDBGames } from '../services/igdb.js';
+import { getPopularIGDBGames, searchIGDBGames, getIGDBGameDetails } from '../services/igdb.js';
 
 const gameRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/games/popular - Get popular PC games from IGDB
@@ -28,6 +28,47 @@ const gameRoutes: FastifyPluginAsync = async (fastify) => {
     } catch (err) {
       console.error('[Games Route Error] Search failed:', err);
       return reply.internalServerError('Erreur lors de la recherche de jeux');
+    }
+  });
+
+  // GET /api/games/:igdbId/details - Get comprehensive details & raw JSON from IGDB
+  fastify.get('/:igdbId/details', async (request, reply) => {
+    const { igdbId } = request.params as { igdbId: string };
+    const { refresh } = request.query as { refresh?: string };
+    const numericId = parseInt(igdbId, 10);
+    if (isNaN(numericId)) {
+      return reply.badRequest('ID IGDB invalide');
+    }
+
+    const shouldRefresh = refresh === 'true';
+
+    try {
+      const details = await getIGDBGameDetails(numericId);
+      if (!details) {
+        return reply.notFound('Jeu non trouvé sur IGDB');
+      }
+
+      // If refresh requested, update stored Game metadata in PostgreSQL database if it exists
+      if (shouldRefresh && details.normalized) {
+        const existingGame = await db.game.findUnique({ where: { igdbId: numericId } });
+        if (existingGame) {
+          await db.game.update({
+            where: { igdbId: numericId },
+            data: {
+              name: details.normalized.name,
+              coverUrl: details.normalized.coverUrl,
+              steamAppId: details.normalized.steamAppId || null,
+              epicSlug: details.normalized.epicSlug || null,
+              bnetSlug: details.normalized.bnetSlug || null
+            }
+          });
+        }
+      }
+
+      return details;
+    } catch (err) {
+      console.error('[Games Route Error] Details fetch failed:', err);
+      return reply.internalServerError('Erreur lors de la récupération des détails IGDB');
     }
   });
 

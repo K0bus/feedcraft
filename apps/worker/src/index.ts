@@ -131,6 +131,7 @@ export async function runNewsCheckPipeline() {
           translatedContent: translation.translatedContent,
           summary: translation.summary,
           gameName: game.name,
+          artworkUrl: game.artworkUrl || null,
           newsUrl: rawArticle.url,
           publishedAt: rawArticle.publishedAt
         });
@@ -150,16 +151,17 @@ cron.schedule('*/15 * * * *', async () => {
 const discordDispatchWorker = new Worker<DispatchDiscordWebhookJobData>(
   'discord-dispatch-queue',
   async (job) => {
-    const { subscriptionId, discordWebhookUrl, translatedTitle, translatedContent, summary, gameName, newsUrl, publishedAt } = job.data;
+    const { subscriptionId, discordWebhookUrl, translatedTitle, translatedContent, summary, gameName, artworkUrl, newsUrl, publishedAt } = job.data;
     console.log(`[Worker - Discord Dispatch] Dispatching webhook pour ${gameName} vers Discord...`);
 
-    const payload = {
+    const payload: any = {
       embeds: [
         {
           title: `🎮 [${gameName}] ${translatedTitle}`,
           description: translatedContent || summary || 'Nouvelle mise à jour disponible !',
           url: newsUrl,
           color: 0x6366f1,
+          thumbnail: artworkUrl ? { url: artworkUrl } : undefined,
           footer: {
             text: 'Propulsé par FeedCrafter'
           },
