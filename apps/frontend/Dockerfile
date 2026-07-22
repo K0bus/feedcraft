@@ -1,18 +1,17 @@
-# Step 1: Base image with pnpm installed
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
+RUN apk add --no-cache openssl
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
 
-# Step 2: Build dependencies & app
 FROM base AS builder
 WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
+RUN pnpm --filter @feedcrafter/shared build
 RUN pnpm --filter @feedcrafter/frontend build
 
-# Step 3: Production runner image
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 

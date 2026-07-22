@@ -6,7 +6,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/auth/discord - Redirect to Discord OAuth2 page
   fastify.get('/discord', async (request, reply) => {
     const clientId = process.env.DISCORD_CLIENT_ID;
-    const redirectUri = process.env.DISCORD_REDIRECT_URI || 'http://localhost:4000/api/auth/discord/callback';
+    const redirectUri = process.env.DISCORD_REDIRECT_URI || 'http://localhost:3000/api/auth/discord/callback';
 
     if (!clientId) {
       return reply.internalServerError('DISCORD_CLIENT_ID missing in environment');
@@ -30,7 +30,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     const clientId = process.env.DISCORD_CLIENT_ID || '';
     const clientSecret = process.env.DISCORD_CLIENT_SECRET || '';
-    const redirectUri = process.env.DISCORD_REDIRECT_URI || 'http://localhost:4000/api/auth/discord/callback';
+    const redirectUri = process.env.DISCORD_REDIRECT_URI || 'http://localhost:3000/api/auth/discord/callback';
 
     try {
       // 1. Exchange authorization code for token
@@ -100,7 +100,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
       reply.setCookie('feedcrafter_session', token, {
         path: '/',
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
+        secure: process.env.COOKIE_SECURE === 'true',
         sameSite: 'lax',
         maxAge: 7 * 24 * 3600 // 7 days
       });

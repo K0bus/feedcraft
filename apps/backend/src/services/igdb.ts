@@ -147,7 +147,120 @@ export async function fetchGameArtworkUrl(igdbId: number): Promise<string | null
 }
 
 /**
- * Searches IGDB for games matching query.
+ * Helper to determine if an IGDB game item is a DLC, Expansion, Addon, Edition bundle, or update.
+ */
+function isDLC(game: IGDBRawGame): boolean {
+  // IGDB game_type & category checks (0 is Main Game)
+  if (game.game_type !== undefined && game.game_type !== 0) {
+    return true;
+  }
+  if (game.category !== undefined && game.category !== 0) {
+    return true;
+  }
+  // Parent game or Version parent means it is a DLC, expansion, or sub-edition bundle
+  if (game.parent_game || game.version_parent) {
+    return true;
+  }
+  // Fallback title checks for common DLC / Edition / Pack patterns
+  const nameLower = (game.name || '').toLowerCase();
+  if (
+    nameLower.includes(' dlc') ||
+    nameLower.includes('season pass') ||
+    nameLower.includes('expansion pack') ||
+    nameLower.includes('soundtrack') ||
+    nameLower.includes('add-on') ||
+    nameLower.includes('skin pack') ||
+    nameLower.includes(' edition') ||
+    nameLower.includes(' bundle') ||
+    nameLower.includes(' pack')
+  ) {
+    return true;
+  }
+  return false;
+}
+
+// Acronym and common shortcut dictionary
+const ACRONYMS: Record<string, string> = {
+  'cs': 'Counter-Strike',
+  'csgo': 'Counter-Strike',
+  'cs2': 'Counter-Strike 2',
+  'gta': 'Grand Theft Auto',
+  'gta v': 'Grand Theft Auto V',
+  'gta 5': 'Grand Theft Auto V',
+  'cod': 'Call of Duty',
+  'wow': 'World of Warcraft',
+  'lol': 'League of Legends',
+  'ff': 'Final Fantasy',
+  'ff7': 'Final Fantasy VII',
+  'mc': 'Minecraft',
+  'poe': 'Path of Exile',
+  'tes': 'The Elder Scrolls',
+  'ac': 'Assassin\'s Creed'
+};
+
+const STOP_WORDS = new Set(['the', 'a', 'an', 'of', 'in', 'and', 'or', 'to', 'for', 'with', 'on', 'at']);
+
+/**
+ * Calculates Levenshtein distance between two strings for typo scoring.
+ */
+function levenshtein(a: string, b: string): number {
+  const an = a ? a.length : 0;
+  const bn = b ? b.length : 0;
+  if (an === 0) return bn;
+  if (bn === 0) return an;
+  const matrix: number[][] = Array.from({ length: bn + 1 }, (_, i) => [i]);
+  for (let j = 0; j <= an; j++) matrix[0][j] = j;
+  for (let i = 1; i <= bn; i++) {
+    for (let j = 1; j <= an; j++) {
+      const cost = a[j - 1] === b[i - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost
+      );
+    }
+  }
+  return matrix[bn][an];
+}
+
+/**
+ * Computes relevance score to rank search results by closeness to user query.
+ */
+function calculateRelevance(gameName: string, query: string): number {
+  const nameNorm = gameName.toLowerCase().trim();
+  const queryNorm = query.toLowerCase().trim();
+
+  if (nameNorm === queryNorm) return 3000;
+  if (nameNorm.startsWith(queryNorm)) return 2500 - (nameNorm.length - queryNorm.length);
+  if (nameNorm.includes(queryNorm)) return 2000 - (nameNorm.length - queryNorm.length);
+
+  const words = nameNorm.split(/[\s:\-\_]+/);
+  const qWords = queryNorm.split(/[\s:\-\_]+/).filter(w => w.length > 0);
+  let wordMatches = 0;
+  for (const qw of qWords) {
+    if (words.some(w => w.startsWith(qw) || qw.startsWith(w))) {
+      wordMatches++;
+    }
+  }
+
+  // Multi-token full match bonus (e.g. BOTH "v" AND "ris" match "V Rising", or BOTH "hunt" AND "show" match "Hunt: Showdown")
+  if (qWords.length > 1 && wordMatches === qWords.length) {
+    return 1800 - nameNorm.length;
+  }
+
+  if (wordMatches > 0) {
+    return (wordMatches * 300) - nameNorm.length;
+  }
+
+  const dist = levenshtein(nameNorm, queryNorm);
+  const maxLen = Math.max(nameNorm.length, queryNorm.length);
+  const similarity = (1 - dist / maxLen);
+  return similarity * 200;
+}
+
+/**
+ * Searches IGDB with enhanced approximation (fuzzy matching, partial words, acronyms, typos, unspaced & short terms)
+ * and excludes DLCs / expansions / edition packs.
  */
 export async function searchIGDBGames(query: string): Promise<GameDTO[]> {
   const token = await getTwitchAccessToken();
@@ -157,33 +270,143 @@ export async function searchIGDBGames(query: string): Promise<GameDTO[]> {
     return [];
   }
 
-  const bodyQuery = `
-    search "${query.replace(/"/g, '')}";
-    fields name, summary, cover.url, external_games.category, external_games.external_game_source, external_games.uid, external_games.url, platforms.name;
-    limit 20;
-  `;
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) return [];
 
-  const response = await fetch('https://api.igdb.com/v4/games', {
-    method: 'POST',
-    headers: {
-      'Client-ID': clientId,
-      'Authorization': `Bearer ${token}`,
-      'Content-Type': 'text/plain'
-    },
-    body: bodyQuery
-  });
+  const lowerQuery = trimmedQuery.toLowerCase();
+  const expandedQuery = ACRONYMS[lowerQuery] || trimmedQuery;
 
-  if (!response.ok) {
-    console.error(`[IGDB Search Error] ${response.status} ${response.statusText}`);
-    return [];
+  const fields = 'name, summary, cover.url, external_games.category, external_games.external_game_source, external_games.uid, external_games.url, platforms.name, category, game_type, parent_game, version_parent, follows, rating_count';
+
+  const tokens = expandedQuery.split(/\s+/).filter(t => t.length > 0);
+  const significantTokens = tokens.filter(t => !STOP_WORDS.has(t.toLowerCase()));
+
+  const executeFetch = async (bodyQuery: string): Promise<IGDBRawGame[]> => {
+    try {
+      const res = await fetch('https://api.igdb.com/v4/games', {
+        method: 'POST',
+        headers: {
+          'Client-ID': clientId,
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'text/plain'
+        },
+        body: bodyQuery
+      });
+      if (!res.ok) {
+        console.error(`[IGDB Search Error] ${res.status} ${res.statusText}`);
+        return [];
+      }
+      return (await res.json()) as IGDBRawGame[];
+    } catch (err) {
+      console.error('[IGDB Fetch Exception]', err);
+      return [];
+    }
+  };
+
+  const promises: Promise<IGDBRawGame[]>[] = [];
+
+  // Strategy 1: Full-Text IGDB search query
+  promises.push(
+    executeFetch(`
+      search "${expandedQuery.replace(/"/g, '')}";
+      fields ${fields};
+      limit 40;
+    `)
+  );
+
+  // Strategy 2: Joined search for multi-token inputs (e.g. "v ris" -> "vris", "x com" -> "xcom")
+  if (tokens.length >= 2) {
+    const joined = tokens.join('');
+    promises.push(
+      executeFetch(`
+        search "${joined.replace(/"/g, '')}";
+        fields ${fields};
+        limit 40;
+      `)
+    );
   }
 
-  const rawGames = (await response.json()) as IGDBRawGame[];
-  return rawGames.map(normalizeIGDBGame);
+  // Strategy 3: Single token space-split variations for unspaced words (e.g. "vrising" -> "v rising", "eldenring" -> "elden ring")
+  if (tokens.length === 1 && tokens[0].length >= 3) {
+    const word = tokens[0];
+    const split1 = word.slice(0, 1) + ' ' + word.slice(1);
+    promises.push(
+      executeFetch(`
+        search "${split1.replace(/"/g, '')}";
+        fields ${fields};
+        limit 40;
+      `)
+    );
+
+    for (let splitIdx = 3; splitIdx <= Math.min(6, word.length - 3); splitIdx++) {
+      const s = word.slice(0, splitIdx) + ' ' + word.slice(splitIdx);
+      promises.push(
+        executeFetch(`
+          search "${s.replace(/"/g, '')}";
+          fields ${fields};
+          limit 40;
+        `)
+      );
+    }
+  }
+
+  // Strategy 4: Multi-Token AND wildcard query sorted by popularity (rating_count desc)
+  const cleanTokens = tokens.map(t => t.replace(/[^a-zA-Z0-9]/g, '')).filter(t => t.length >= 1);
+  if (cleanTokens.length >= 2) {
+    const whereAndClause = cleanTokens.map(t => `name ~ *"${t}"*`).join(' & ');
+    promises.push(
+      executeFetch(`
+        fields ${fields};
+        where ${whereAndClause} & category = null & parent_game = null;
+        sort rating_count desc;
+        limit 40;
+      `)
+    );
+  }
+
+  // Strategy 5: Primary token substring wildcard query sorted by popularity
+  const sigTokensClean = significantTokens.map(t => t.replace(/[^a-zA-Z0-9]/g, '')).filter(t => t.length >= 2);
+  const mainToken = sigTokensClean[0] || cleanTokens.find(t => t.length >= 2);
+  if (mainToken && mainToken.length >= 2) {
+    promises.push(
+      executeFetch(`
+        fields ${fields};
+        where name ~ *"${mainToken}"* & category = null & parent_game = null;
+        sort rating_count desc;
+        limit 40;
+      `)
+    );
+  }
+
+  const resultsList = await Promise.all(promises);
+
+  // Deduplicate games by IGDB ID
+  const map = new Map<number, IGDBRawGame>();
+  for (const list of resultsList) {
+    for (const game of list) {
+      if (!map.has(game.id)) {
+        map.set(game.id, game);
+      }
+    }
+  }
+
+  let allGames = Array.from(map.values());
+
+  // Filter out DLCs / expansions / addons / sub-edition bundles
+  allGames = allGames.filter(g => !isDLC(g));
+
+  // Sort games by relevance score & popularity metrics
+  allGames.sort((a, b) => {
+    const scoreA = calculateRelevance(a.name, expandedQuery) + (a.rating_count ? Math.min(a.rating_count, 100) : 0) + (a.follows ? Math.min(a.follows, 100) : 0);
+    const scoreB = calculateRelevance(b.name, expandedQuery) + (b.rating_count ? Math.min(b.rating_count, 100) : 0) + (b.follows ? Math.min(b.follows, 100) : 0);
+    return scoreB - scoreA;
+  });
+
+  return allGames.slice(0, 30).map(normalizeIGDBGame);
 }
 
 /**
- * Fetches popular PC games from IGDB for default catalogue feed.
+ * Fetches popular PC games from IGDB for default catalogue feed, excluding DLCs and sub-editions.
  */
 export async function getPopularIGDBGames(): Promise<GameDTO[]> {
   const token = await getTwitchAccessToken();
@@ -224,10 +447,10 @@ export async function getPopularIGDBGames(): Promise<GameDTO[]> {
   }
 
   const bodyQuery = `
-    fields name, summary, cover.url, external_games.category, external_games.external_game_source, external_games.uid, external_games.url, platforms.name, follows;
-    where cover != null & follows != null;
-    sort follows desc;
-    limit 20;
+    fields name, summary, cover.url, external_games.category, external_games.external_game_source, external_games.uid, external_games.url, platforms.name, follows, rating_count, category, game_type, parent_game, version_parent;
+    where cover != null & rating_count != null & category = null & parent_game = null;
+    sort rating_count desc;
+    limit 120;
   `;
 
   const response = await fetch('https://api.igdb.com/v4/games', {
@@ -246,7 +469,15 @@ export async function getPopularIGDBGames(): Promise<GameDTO[]> {
   }
 
   const rawGames = (await response.json()) as IGDBRawGame[];
-  return rawGames.map(normalizeIGDBGame);
+  const normalizedList = rawGames
+    .filter(g => !isDLC(g))
+    .map(normalizeIGDBGame);
+
+  // Filter games available on Steam or with Steam App ID, fallback to top games
+  const steamGames = normalizedList.filter(g => !!g.steamAppId || g.platform?.toLowerCase() === 'steam');
+  const finalCatalog = steamGames.length >= 40 ? steamGames : normalizedList;
+
+  return finalCatalog.slice(0, 40);
 }
 
 /**

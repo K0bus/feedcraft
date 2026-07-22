@@ -27,7 +27,7 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
   // GET /api/subscriptions - Get subscriptions for current logged-in user
   fastify.get('/', async (request, _reply) => {
     const userId = getAuthUserId(request);
-    
+
     // If no authenticated user, return all or filtered for guest demo
     const subscriptions = await db.subscription.findMany({
       where: userId ? { userId } : undefined,

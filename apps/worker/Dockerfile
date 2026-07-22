@@ -1,4 +1,5 @@
-FROM node:20-alpine AS base
+FROM node:22-alpine AS base
+RUN apk add --no-cache openssl
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
@@ -8,6 +9,8 @@ WORKDIR /app
 COPY . .
 RUN pnpm install --frozen-lockfile
 RUN pnpm db:generate
+RUN pnpm --filter @feedcrafter/shared build
+RUN pnpm --filter @feedcrafter/database build
 RUN pnpm --filter @feedcrafter/worker build
 
 FROM base AS runner

@@ -108,6 +108,12 @@ export interface IGDBExternalGame {
 export interface IGDBRawGame {
   id: number;
   name: string;
+  category?: number;
+  game_type?: number;
+  parent_game?: number;
+  version_parent?: number;
+  follows?: number;
+  rating_count?: number;
   summary?: string;
   storyline?: string;
   cover?: {
@@ -119,7 +125,6 @@ export interface IGDBRawGame {
   first_release_date?: number;
   rating?: number;
   aggregated_rating?: number;
-  follows?: number;
   genres?: Array<{ id: number; name: string }>;
   game_modes?: Array<{ id: number; name: string }>;
   themes?: Array<{ id: number; name: string }>;

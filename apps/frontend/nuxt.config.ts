@@ -27,9 +27,6 @@ export default defineNuxtConfig({
       apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || ''
     }
   },
-  routeRules: {
-    '/api/**': { proxy: `${process.env.NUXT_PUBLIC_API_BASE_URL || 'http://localhost:4000'}/api/**` }
-  },
   typescript: {
     strict: true,
     typeCheck: false
