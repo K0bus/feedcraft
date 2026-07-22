@@ -1,7 +1,7 @@
 import { defineEventHandler, sendRedirect, getRequestHeaders, readRawBody } from 'h3'
 
 export default defineEventHandler(async (event) => {
-  const backendUrl = process.env.BACKEND_URL || 'http://backend:4000'
+  const backendUrl = process.env.BACKEND_URL || 'http://localhost:4000'
   const targetUrl = `${backendUrl}${event.path}`
 
   const headers = getRequestHeaders(event)

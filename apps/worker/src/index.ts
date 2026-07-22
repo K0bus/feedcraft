@@ -67,10 +67,16 @@ export async function runNewsCheckPipeline() {
             title: rawArticle.title,
             content: rawArticle.content,
             url: rawArticle.url,
+            imageUrl: rawArticle.imageUrl || null,
             source: 'STEAM',
             externalId: rawArticle.url,
             publishedAt: new Date(rawArticle.publishedAt)
           }
+        });
+      } else if (!newsFeed.imageUrl && rawArticle.imageUrl) {
+        newsFeed = await db.newsFeed.update({
+          where: { id: newsFeed.id },
+          data: { imageUrl: rawArticle.imageUrl }
         });
       }
 
@@ -132,6 +138,7 @@ export async function runNewsCheckPipeline() {
           summary: translation.summary,
           gameName: game.name,
           artworkUrl: game.artworkUrl || null,
+          imageUrl: newsFeed.imageUrl || rawArticle.imageUrl || null,
           newsUrl: rawArticle.url,
           publishedAt: rawArticle.publishedAt
         });
@@ -151,7 +158,7 @@ cron.schedule('*/15 * * * *', async () => {
 const discordDispatchWorker = new Worker<DispatchDiscordWebhookJobData>(
   'discord-dispatch-queue',
   async (job) => {
-    const { subscriptionId, discordWebhookUrl, translatedTitle, translatedContent, summary, gameName, artworkUrl, newsUrl, publishedAt } = job.data;
+    const { subscriptionId, discordWebhookUrl, translatedTitle, translatedContent, summary, gameName, artworkUrl, imageUrl, newsUrl, publishedAt } = job.data;
     console.log(`[Worker - Discord Dispatch] Dispatching webhook pour ${gameName} vers Discord...`);
 
     const payload: any = {
@@ -162,6 +169,7 @@ const discordDispatchWorker = new Worker<DispatchDiscordWebhookJobData>(
           url: newsUrl,
           color: 0x6366f1,
           thumbnail: artworkUrl ? { url: artworkUrl } : undefined,
+          image: imageUrl ? { url: imageUrl } : undefined,
           footer: {
             text: 'Propulsé par FeedCrafter'
           },

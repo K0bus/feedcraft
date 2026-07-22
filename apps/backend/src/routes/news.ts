@@ -55,6 +55,7 @@ const newsRoutes: FastifyPluginAsync = async (fastify) => {
           title: rawArticle.title,
           content: rawArticle.content,
           url: rawArticle.url,
+          imageUrl: rawArticle.imageUrl,
           publishedAt: rawArticle.publishedAt as string
         },
         translated: {
@@ -68,6 +69,7 @@ const newsRoutes: FastifyPluginAsync = async (fastify) => {
           color: 0x6366f1, // Hex color for Discord Embed lateral bar (#6366F1)
           url: rawArticle.url,
           thumbnail: artworkUrl ? { url: artworkUrl } : undefined,
+          image: rawArticle.imageUrl ? { url: rawArticle.imageUrl } : undefined,
           footerText: 'Propulsé par FeedCrafter',
           timestamp: new Date(rawArticle.publishedAt).toISOString()
         }

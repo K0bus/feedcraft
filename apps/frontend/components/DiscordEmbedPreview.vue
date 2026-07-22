@@ -93,6 +93,15 @@ const activeTab = ref<'discord' | 'raw'>('discord')
               </div>
             </div>
 
+            <!-- Embed Main News Image Banner -->
+            <div v-if="data.discordEmbed.image?.url || data.raw.imageUrl" class="mt-3 rounded-lg overflow-hidden border border-slate-700/40">
+              <img
+                :src="data.discordEmbed.image?.url || data.raw.imageUrl || ''"
+                alt="News banner"
+                class="w-full object-cover max-h-80 rounded-lg"
+              />
+            </div>
+
             <!-- Embed Footer & Timestamp -->
             <div class="pt-2 border-t border-slate-700/40 flex items-center justify-between text-[10px] text-slate-400">
               <span>{{ data.discordEmbed.footerText || 'Propulsé par FeedCrafter × Gemini 2.5 Flash' }}</span>

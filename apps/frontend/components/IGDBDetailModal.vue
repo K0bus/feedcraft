@@ -1,6 +1,20 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted, onUnmounted } from 'vue'
 import type { GameDTO, IGDBGameDetailsResponse } from '@feedcrafter/shared'
+import {
+  Gamepad2,
+  X,
+  RotateCw,
+  Copy,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  Code2,
+  Info,
+  ExternalLink
+} from 'lucide-vue-next'
+
 
 const props = defineProps<{
   isOpen: boolean
@@ -137,11 +151,11 @@ const copyJson = async () => {
             :alt="game.name"
             class="w-10 h-10 rounded-lg object-cover border border-dark-600 shadow"
           />
-          <div v-else class="h-10 w-10 rounded-lg bg-brand-600/20 text-brand-400 flex items-center justify-center font-bold text-sm">
-            🎮
+          <div v-else class="h-10 w-10 rounded-lg bg-brand-600/20 text-brand-400 border border-brand-500/30 flex items-center justify-center font-bold">
+            <Gamepad2 class="w-5 h-5 text-brand-400" />
           </div>
           <div>
-            <h3 class="text-xl font-bold font-outfit text-white flex items-center gap-2">
+            <h3 class="text-xl font-extrabold font-outfit text-white flex items-center gap-2">
               <span>{{ game ? game.name : 'Détails du jeu' }}</span>
               <span class="text-xs px-2 py-0.5 rounded-full bg-brand-500/10 text-brand-400 border border-brand-500/20">
                 IGDB ID: {{ game?.igdbId }}
@@ -153,7 +167,9 @@ const copyJson = async () => {
           </div>
         </div>
 
-        <button @click="emit('close')" class="text-slate-400 hover:text-white text-2xl font-bold">×</button>
+        <button @click="emit('close')" class="p-1.5 rounded-lg bg-dark-900 text-slate-400 hover:text-white transition-colors">
+          <X class="w-4 h-4" />
+        </button>
       </div>
 
       <!-- Navigation Tabs & Refresh Button -->
@@ -161,41 +177,45 @@ const copyJson = async () => {
         <div class="flex items-center space-x-2 overflow-x-auto">
           <button
             @click="activeTab = 'details'"
-            class="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
+            class="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
             :class="[
               activeTab === 'details'
                 ? 'bg-brand-600 text-white shadow-glow-indigo'
-                : 'bg-dark-800 text-slate-400 hover:text-white'
+                : 'bg-dark-900 text-slate-400 hover:text-white border border-dark-700/60'
             ]"
           >
-            <span>📌 Détails & Métadonnées</span>
+            <Info class="w-3.5 h-3.5" />
+            <span>Détails & Métadonnées</span>
           </button>
 
           <button
             @click="activeTab = 'json'"
-            class="px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all"
+            class="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all"
             :class="[
               activeTab === 'json'
                 ? 'bg-brand-600 text-white shadow-glow-indigo'
-                : 'bg-dark-800 text-slate-400 hover:text-white'
+                : 'bg-dark-900 text-slate-400 hover:text-white border border-dark-700/60'
             ]"
           >
-            <span>💻 Format JSON Brut</span>
+            <Code2 class="w-3.5 h-3.5" />
+            <span>Format JSON Brut</span>
           </button>
         </div>
 
         <!-- Refresh Button -->
         <div class="flex items-center space-x-2">
-          <span v-if="isRefreshedSuccess" class="text-xs font-semibold text-emerald-400 animate-fade-in">
-            ✅ Cache IGDB à jour !
+          <span v-if="isRefreshedSuccess" class="text-xs font-bold text-emerald-400 animate-fade-in flex items-center gap-1">
+            <Check class="w-3.5 h-3.5 text-emerald-400" />
+            <span>Cache IGDB à jour !</span>
           </span>
           <button
             @click="fetchDetails(true)"
             :disabled="isLoading"
-            class="px-3.5 py-2 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 text-xs font-semibold flex items-center gap-2 transition-all disabled:opacity-50"
+            class="px-3.5 py-2 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 border border-brand-500/30 text-xs font-bold flex items-center gap-1.5 transition-all disabled:opacity-50"
             title="Forcer la mise à jour du cache IGDB et des identifiants plateformes"
           >
-            <span>🔄 Rafraîchir les données IGDB</span>
+            <RotateCw class="w-3.5 h-3.5 text-brand-400" :class="{ 'animate-spin': isLoading }" />
+            <span>Rafraîchir les données IGDB</span>
           </button>
         </div>
       </div>
@@ -377,8 +397,8 @@ const copyJson = async () => {
                 class="group relative h-28 rounded-xl overflow-hidden border border-dark-700 hover:border-brand-500 cursor-pointer transition-all shadow-md"
               >
                 <img :src="img" alt="Screenshot" class="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                <div class="absolute inset-0 bg-dark-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-semibold gap-1.5 backdrop-blur-[2px]">
-                  🔍 Agrandir
+                <div class="absolute inset-0 bg-dark-950/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white text-xs font-bold gap-1.5 backdrop-blur-[2px]">
+                  <span>Agrandir</span>
                 </div>
               </div>
             </div>
@@ -391,14 +411,16 @@ const copyJson = async () => {
             <span class="text-xs text-slate-400 font-mono">Payload JSON IGDB API v4</span>
             <button
               @click="copyJson"
-              class="px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all"
+              class="px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all"
               :class="[
                 isCopied
                   ? 'bg-emerald-600 text-white'
                   : 'bg-brand-600 hover:bg-brand-500 text-white shadow'
               ]"
             >
-              <span>{{ isCopied ? '✅ Copié !' : '📋 Copier le JSON' }}</span>
+              <Check v-if="isCopied" class="w-3.5 h-3.5 text-white" />
+              <Copy v-else class="w-3.5 h-3.5 text-white" />
+              <span>{{ isCopied ? 'Copié !' : 'Copier le JSON' }}</span>
             </button>
           </div>
 
@@ -410,7 +432,7 @@ const copyJson = async () => {
       <div class="pt-4 border-t border-dark-700/60 flex justify-end flex-shrink-0">
         <button
           @click="emit('close')"
-          class="px-5 py-2 rounded-xl bg-dark-800 hover:bg-dark-700 text-slate-300 text-xs font-semibold border border-dark-600 transition-colors"
+          class="px-5 py-2 rounded-xl bg-dark-900 hover:bg-dark-800 text-slate-300 text-xs font-bold border border-dark-700/60 transition-colors"
         >
           Fermer
         </button>
@@ -426,11 +448,12 @@ const copyJson = async () => {
         <!-- Lightbox Top Navigation Bar -->
         <div class="flex items-center justify-between w-full max-w-7xl mx-auto flex-shrink-0 pt-2 pb-4">
           <div class="flex items-center space-x-3">
-            <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 font-outfit">
-              📷 Capture {{ selectedImageIndex + 1 }} / {{ detailsData.normalized.screenshots.length }}
+            <span class="text-xs font-bold px-3 py-1.5 rounded-full bg-brand-500/20 text-brand-300 border border-brand-500/30 font-outfit flex items-center gap-1.5">
+              <ImageIcon class="w-3.5 h-3.5 text-brand-400" />
+              <span>Capture {{ selectedImageIndex + 1 }} / {{ detailsData.normalized.screenshots.length }}</span>
             </span>
             <span class="text-xs text-slate-400 hidden sm:inline">
-              Naviguez avec ⬅️ ➡️ ou les flèches du clavier
+              Naviguez avec les flèches du clavier ou les boutons
             </span>
           </div>
 
@@ -438,7 +461,8 @@ const copyJson = async () => {
             @click="closeLightbox"
             class="px-4 py-2 rounded-xl bg-dark-800 hover:bg-rose-500/20 text-slate-200 hover:text-rose-400 text-xs font-bold border border-dark-600 hover:border-rose-500/50 flex items-center gap-2 transition-all shadow-lg"
           >
-            <span>✕ Masquer l'image (Esc)</span>
+            <X class="w-4 h-4" />
+            <span>Fermer (Esc)</span>
           </button>
         </div>
 
@@ -447,10 +471,10 @@ const copyJson = async () => {
           <!-- Previous Image Button -->
           <button
             @click.stop="prevImage"
-            class="absolute left-2 sm:left-6 z-10 w-12 h-12 rounded-2xl bg-dark-900/80 hover:bg-brand-600 text-white border border-dark-700 hover:border-brand-500 shadow-2xl flex items-center justify-center text-xl font-bold transition-all transform hover:scale-110 active:scale-95"
-            title="Image précédente (Flèche Gauche ⬅️)"
+            class="absolute left-2 sm:left-6 z-10 w-12 h-12 rounded-2xl bg-dark-900/80 hover:bg-brand-600 text-white border border-dark-700 hover:border-brand-500 shadow-2xl flex items-center justify-center font-bold transition-all transform hover:scale-110 active:scale-95"
+            title="Image précédente"
           >
-            ❮
+            <ChevronLeft class="w-6 h-6" />
           </button>
 
           <!-- Main Image -->
@@ -465,10 +489,10 @@ const copyJson = async () => {
           <!-- Next Image Button -->
           <button
             @click.stop="nextImage"
-            class="absolute right-2 sm:right-6 z-10 w-12 h-12 rounded-2xl bg-dark-900/80 hover:bg-brand-600 text-white border border-dark-700 hover:border-brand-500 shadow-2xl flex items-center justify-center text-xl font-bold transition-all transform hover:scale-110 active:scale-95"
-            title="Image suivante (Flèche Droite ➡️)"
+            class="absolute right-2 sm:right-6 z-10 w-12 h-12 rounded-2xl bg-dark-900/80 hover:bg-brand-600 text-white border border-dark-700 hover:border-brand-500 shadow-2xl flex items-center justify-center font-bold transition-all transform hover:scale-110 active:scale-95"
+            title="Image suivante"
           >
-            ❯
+            <ChevronRight class="w-6 h-6" />
           </button>
         </div>
 

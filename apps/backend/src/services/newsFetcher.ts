@@ -84,6 +84,64 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+function extractImageUrl(item: any): string | null {
+  const content = item['content:encoded'] || item.content || '';
+
+  // 1. Check enclosure
+  if (item.enclosure && item.enclosure.url) {
+    const encUrl = item.enclosure.url;
+    if (
+      /\.(jpg|jpeg|png|webp|gif)(\?.*)?$/i.test(encUrl) ||
+      (item.enclosure.type && item.enclosure.type.startsWith('image/'))
+    ) {
+      if (
+        !encUrl.includes('placeholder') &&
+        !encUrl.includes('blank.gif') &&
+        !encUrl.includes('1x1')
+      ) {
+        return encUrl;
+      }
+    }
+  }
+
+  // 2. STEAM_CLAN_IMAGE BBCode in content
+  const clanMatch = content.match(/\{STEAM_CLAN_IMAGE\}([^\s\"'\<\>]+)/i);
+  if (clanMatch) {
+    return `https://clan.cloudflare.steamstatic.com/images/${clanMatch[1]}`;
+  }
+
+  // 3. [img]url[/img] BBCode in content
+  const bbcodeMatch = content.match(/\[img\]([^\[]+)\[\/img\]/i);
+  if (bbcodeMatch) {
+    const url = bbcodeMatch[1].trim();
+    if (
+      !url.includes('placeholder') &&
+      !url.includes('blank.gif') &&
+      !url.includes('1x1') &&
+      !url.startsWith('data:')
+    ) {
+      return url;
+    }
+  }
+
+  // 4. HTML <img src="..."> in content
+  const imgMatches = [...content.matchAll(/<img[^>]+src=[\"']([^\"']+)[\"']/gi)];
+  for (const match of imgMatches) {
+    const src = match[1];
+    if (
+      src &&
+      !src.includes('placeholder') &&
+      !src.includes('blank.gif') &&
+      !src.includes('1x1') &&
+      !src.startsWith('data:')
+    ) {
+      return src;
+    }
+  }
+
+  return null;
+}
+
 /**
  * Fetches the latest raw news item for a game from official sources (Steam RSS)
  */
@@ -108,12 +166,14 @@ export async function fetchLatestRawNews(game: {
       const rawLink = latest.link || latest.guid || (latest as any).id;
 
       const exactArticleUrl = cleanUrl(rawLink, appId);
-      console.log(`[NewsFetcher] Exact Steam Article URL extracted: ${exactArticleUrl}`);
+      const imageUrl = extractImageUrl(latest);
+      console.log(`[NewsFetcher] Exact Steam Article URL extracted: ${exactArticleUrl}, Image: ${imageUrl}`);
 
       return {
         title: latest.title || `Patch note pour ${game.name}`,
         content: stripHtml(rawContent) || 'Aucun contenu détaillé fourni.',
         url: exactArticleUrl,
+        imageUrl: imageUrl,
         publishedAt: latest.pubDate || latest.isoDate || new Date().toISOString(),
         author: latest.creator || 'Équipe de Développement'
       };

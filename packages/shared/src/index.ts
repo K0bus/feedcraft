@@ -15,6 +15,7 @@ export interface UserDTO {
   email?: string | null;
   avatar?: string | null;
   createdAt: string;
+  isSuperAdmin?: boolean;
 }
 
 export interface GameDTO {
@@ -62,6 +63,7 @@ export interface RawArticle {
   url: string;
   publishedAt: string;
   author?: string;
+  imageUrl?: string | null;
 }
 
 // News Preview API Request & Response Contracts
@@ -85,6 +87,7 @@ export interface NewsPreviewResponse {
     color: number;
     url: string;
     thumbnail?: { url: string };
+    image?: { url: string };
     footerText?: string;
     timestamp?: string;
   };
@@ -185,6 +188,7 @@ export interface DispatchDiscordWebhookJobData {
   gameName: string;
   gameCoverUrl?: string;
   artworkUrl?: string | null;
+  imageUrl?: string | null;
   newsUrl: string;
   publishedAt: string;
 }
@@ -196,3 +200,69 @@ export interface GeminiTranslationResult {
   summary: string;
   detectedLanguage?: string;
 }
+
+// Admin Interfaces
+export interface AdminUserDTO {
+  id: string;
+  discordId: string;
+  username: string;
+  email?: string | null;
+  avatar?: string | null;
+  createdAt: string;
+  subscriptionsCount: number;
+}
+
+export interface AdminWebhookDTO {
+  id: string;
+  userId: string;
+  userName: string;
+  gameId: string;
+  gameName: string;
+  gameCoverUrl?: string | null;
+  discordWebhookUrl: string;
+  guildName?: string | null;
+  status: string;
+  createdAt: string;
+  lastDispatchStatus?: string | null;
+  lastDispatchAt?: string | null;
+}
+
+export interface AdminWorkerStatusDTO {
+  newsFetchQueue: {
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+  };
+  discordDispatchQueue: {
+    waiting: number;
+    active: number;
+    completed: number;
+    failed: number;
+  };
+  status: 'online' | 'degraded' | 'offline';
+}
+
+export interface AdminAiModelConfig {
+  name: string;
+  displayName: string;
+  enabled: boolean;
+  order: number;
+  inputTokenLimit?: number;
+  outputTokenLimit?: number;
+  inputTokenFormatted?: string;
+  outputTokenFormatted?: string;
+  rpm?: string;
+  rpd?: string;
+  tpm?: string;
+}
+
+export interface AdminAiModelsDTO {
+  models: AdminAiModelConfig[];
+}
+
+export interface AdminPromptConfigDTO {
+  systemPrompt: string;
+  defaultPrompt: string;
+}
+

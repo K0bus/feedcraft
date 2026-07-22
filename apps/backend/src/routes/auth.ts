@@ -144,7 +144,8 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         username: user.username,
         email: user.email,
         avatar: user.avatar,
-        createdAt: user.createdAt.toISOString()
+        createdAt: user.createdAt.toISOString(),
+        isSuperAdmin: Boolean(process.env.SUPER_ADMIN_DISCORD_ID && user.discordId === process.env.SUPER_ADMIN_DISCORD_ID)
       };
 
       return userDto;

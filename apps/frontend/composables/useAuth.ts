@@ -11,6 +11,7 @@ export function useAuth() {
   const apiBaseUrl = config.public.apiBaseUrl || ''
 
   const isAuthenticated = computed(() => !!user.value)
+  const isSuperAdmin = computed(() => !!user.value?.isSuperAdmin)
 
   /**
    * Fetches current authenticated user profile from backend
@@ -92,6 +93,7 @@ export function useAuth() {
   return {
     user,
     isAuthenticated,
+    isSuperAdmin,
     isLoading,
     error,
     fetchUser,

@@ -236,6 +236,13 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
 
       // 5. Translate via Gemini AI
       const translation = await translateForDiscord(rawArticle);
+      const newsImageUrl = newsFeed.imageUrl || rawArticle.imageUrl || null;
+      if (!newsFeed.imageUrl && rawArticle.imageUrl) {
+        await db.newsFeed.update({
+          where: { id: newsFeed.id },
+          data: { imageUrl: rawArticle.imageUrl }
+        });
+      }
 
       // 6. Deliver embed directly to Discord Webhook
       const discordPayload: any = {
@@ -246,6 +253,7 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
             url: rawArticle.url,
             color: 0x6366f1,
             thumbnail: artworkUrl ? { url: artworkUrl } : undefined,
+            image: newsImageUrl ? { url: newsImageUrl } : undefined,
             footer: { text: 'Propulsé par FeedCrafter (Re-dispatch après purge du cache)' },
             timestamp: rawArticle.publishedAt ? new Date(rawArticle.publishedAt).toISOString() : new Date().toISOString()
           }

@@ -8,6 +8,7 @@ import authRoutes from './routes/auth.js';
 import gameRoutes from './routes/games.js';
 import subscriptionRoutes from './routes/subscriptions.js';
 import newsRoutes from './routes/news.js';
+import adminRoutes from './routes/admin.js';
 
 export function buildApp() {
   const app = Fastify({
@@ -31,6 +32,7 @@ export function buildApp() {
   app.register(gameRoutes, { prefix: '/api/games' });
   app.register(subscriptionRoutes, { prefix: '/api/subscriptions' });
   app.register(newsRoutes, { prefix: '/api/news' });
+  app.register(adminRoutes, { prefix: '/api/admin' });
 
   return app;
 }

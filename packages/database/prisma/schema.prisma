@@ -67,6 +67,7 @@ model NewsFeed {
   content     String   @db.Text
   url         String
   publishedAt DateTime
+  imageUrl    String?
   source      String   // e.g. "STEAM", "EPIC", "RSS"
   externalId  String   // Original news ID
   createdAt   DateTime @default(now())
@@ -111,3 +112,12 @@ model DispatchLog {
   @@unique([subscriptionId, newsFeedId])
   @@map("dispatch_logs")
 }
+
+model SystemConfig {
+  key       String   @id
+  value     String   @db.Text
+  updatedAt DateTime @updatedAt
+
+  @@map("system_configs")
+}
+
