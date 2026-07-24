@@ -14,7 +14,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 
     const discordOAuthUrl = `https://discord.com/api/oauth2/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(
       redirectUri
-    )}&response_type=code&scope=identify%20email`;
+    )}&response_type=code&scope=identify%20email%20guilds`;
 
     return reply.redirect(discordOAuthUrl);
   });
@@ -75,7 +75,19 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         ? `https://cdn.discordapp.com/avatars/${discordUser.id}/${discordUser.avatar}.png`
         : `https://cdn.discordapp.com/embed/avatars/${Number(discordUser.id) % 5}.png`;
 
-      // 3. Upsert User in Prisma Database
+      // 3. Fetch User Guilds from Discord
+      const guildsResponse = await fetch('https://discord.com/api/v10/users/@me/guilds', {
+        headers: { Authorization: `Bearer ${tokenData.access_token}` }
+      });
+
+      let discordGuilds: any[] = [];
+      if (guildsResponse.ok) {
+        discordGuilds = (await guildsResponse.json()) as any[];
+      } else {
+        console.warn('[Discord OAuth Warning] Could not fetch user guilds:', await guildsResponse.text());
+      }
+
+      // 4. Upsert User in Prisma Database
       const user = await db.user.upsert({
         where: { discordId: discordUser.id },
         update: {
@@ -91,7 +103,39 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         }
       });
 
-      // 4. Generate Session JWT & Cookie
+      // 5. Upsert User Guilds
+      if (discordGuilds.length > 0) {
+        for (const g of discordGuilds) {
+          const iconUrl = g.icon
+            ? `https://cdn.discordapp.com/icons/${g.id}/${g.icon}.png`
+            : null;
+
+          await db.userGuild.upsert({
+            where: {
+              userId_guildId: {
+                userId: user.id,
+                guildId: g.id
+              }
+            },
+            update: {
+              name: g.name,
+              icon: iconUrl,
+              permissions: g.permissions ? String(g.permissions) : null,
+              owner: Boolean(g.owner)
+            },
+            create: {
+              userId: user.id,
+              guildId: g.id,
+              name: g.name,
+              icon: iconUrl,
+              permissions: g.permissions ? String(g.permissions) : null,
+              owner: Boolean(g.owner)
+            }
+          });
+        }
+      }
+
+      // 6. Generate Session JWT & Cookie
       const token = fastify.jwt.sign(
         { userId: user.id, discordId: user.discordId, username: user.username },
         { expiresIn: '7d' }
@@ -112,7 +156,7 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
-  // GET /api/auth/me - Return current user profile
+  // GET /api/auth/me - Return current user profile with guilds
   fastify.get('/me', async (request, reply) => {
     let token = request.cookies.feedcrafter_session;
     
@@ -131,7 +175,8 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
     try {
       const decoded = fastify.jwt.verify<{ userId: string }>(token);
       const user = await db.user.findUnique({
-        where: { id: decoded.userId }
+        where: { id: decoded.userId },
+        include: { guilds: true }
       });
 
       if (!user) {
@@ -145,7 +190,15 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
         email: user.email,
         avatar: user.avatar,
         createdAt: user.createdAt.toISOString(),
-        isSuperAdmin: Boolean(process.env.SUPER_ADMIN_DISCORD_ID && user.discordId === process.env.SUPER_ADMIN_DISCORD_ID)
+        isSuperAdmin: Boolean(process.env.SUPER_ADMIN_DISCORD_ID && user.discordId === process.env.SUPER_ADMIN_DISCORD_ID),
+        guilds: (user.guilds || []).map((g) => ({
+          id: g.id,
+          guildId: g.guildId,
+          name: g.name,
+          icon: g.icon,
+          owner: g.owner,
+          permissions: g.permissions
+        }))
       };
 
       return userDto;

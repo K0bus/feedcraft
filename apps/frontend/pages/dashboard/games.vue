@@ -90,7 +90,14 @@ const handleDetailsClick = (game: GameDTO) => {
   isDetailModalOpen.value = true
 }
 
-const handleSaveWebhook = async (data: { webhookUrl: string; language: string; channelName?: string }) => {
+const handleSaveWebhook = async (data: {
+  webhookUrl: string
+  language: string
+  channelName?: string
+  guildId?: string
+  guildName?: string
+  guildIcon?: string
+}) => {
   if (!selectedGame.value) return
 
   const payload: CreateSubscriptionPayload = {
@@ -101,7 +108,9 @@ const handleSaveWebhook = async (data: { webhookUrl: string; language: string; c
     epicSlug: selectedGame.value.epicSlug || undefined,
     bnetSlug: selectedGame.value.bnetSlug || undefined,
     discordWebhookUrl: data.webhookUrl,
-    guildName: data.channelName || 'Serveur Discord'
+    guildId: data.guildId,
+    guildName: data.guildName || data.channelName || 'Serveur Discord',
+    guildIcon: data.guildIcon
   }
 
   try {

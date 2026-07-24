@@ -1,27 +1,119 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import type { GameDTO } from '@feedcrafter/shared'
-import { Webhook, Send, X, Check, AlertCircle } from 'lucide-vue-next'
+import { ref, watch } from 'vue'
+import type { GameDTO, UserGuildDTO, InspectWebhookResult } from '@feedcrafter/shared'
+import { Webhook, Send, X, Check, AlertCircle, RefreshCw, Server, Sparkles } from 'lucide-vue-next'
 
 const props = defineProps<{
   isOpen: boolean
   game?: GameDTO | null
+  initialWebhookUrl?: string
+  initialGuildName?: string
 }>()
 
 const emit = defineEmits<{
   (e: 'close'): void
-  (e: 'save', payload: { webhookUrl: string; language: string; channelName?: string }): void
+  (
+    e: 'save',
+    payload: {
+      webhookUrl: string
+      language: string
+      channelName?: string
+      guildId?: string
+      guildName?: string
+      guildIcon?: string
+    }
+  ): void
 }>()
 
 const config = useRuntimeConfig()
 const apiBaseUrl = config.public.apiBaseUrl || ''
+const { user } = useAuth()
 
-const webhookUrl = ref('')
-const channelName = ref('')
+const webhookUrl = ref(props.initialWebhookUrl || '')
+const channelName = ref(props.initialGuildName || '')
 const language = ref('fr')
 const isTesting = ref(false)
 const testStatus = ref<'idle' | 'success' | 'error'>('idle')
 const errorMessage = ref('')
+
+const isInspecting = ref(false)
+const inspectStatus = ref<'idle' | 'success' | 'error'>('idle')
+const inspectMessage = ref('')
+const selectedGuildId = ref<string>('')
+const customGuildName = ref<string>('')
+const selectedGuildIcon = ref<string | null>(null)
+
+watch(
+  () => props.isOpen,
+  (open) => {
+    if (open) {
+      webhookUrl.value = props.initialWebhookUrl || ''
+      channelName.value = props.initialGuildName || ''
+      testStatus.value = 'idle'
+      inspectStatus.value = 'idle'
+      inspectMessage.value = ''
+      selectedGuildId.value = ''
+      customGuildName.value = ''
+      selectedGuildIcon.value = null
+    }
+  }
+)
+
+const handleInspectWebhook = async () => {
+  if (!webhookUrl.value) return
+  isInspecting.value = true
+  inspectStatus.value = 'idle'
+  inspectMessage.value = ''
+
+  try {
+    const requestFetch = useRequestFetch()
+    const result = await requestFetch<InspectWebhookResult>(`${apiBaseUrl}/api/subscriptions/inspect-webhook`, {
+      method: 'POST',
+      body: { webhookUrl: webhookUrl.value }
+    })
+
+    inspectStatus.value = 'success'
+    if (result.matchedGuild) {
+      selectedGuildId.value = result.matchedGuild.guildId
+      customGuildName.value = result.matchedGuild.name
+      selectedGuildIcon.value = result.matchedGuild.icon || null
+      inspectMessage.value = `Guilde détectée : ${result.matchedGuild.name}`
+    } else if (result.guildName) {
+      selectedGuildId.value = result.guildId || ''
+      customGuildName.value = result.guildName
+      selectedGuildIcon.value = result.guildIcon || null
+      inspectMessage.value = `Infos récupérées : ${result.guildName}`
+    }
+
+    if (result.channelName && !channelName.value) {
+      channelName.value = result.channelName
+    }
+  } catch (err: any) {
+    inspectStatus.value = 'error'
+    inspectMessage.value = err.data?.error || err.message || 'Impossible d\'inspecter le webhook.'
+  } finally {
+    isInspecting.value = false
+  }
+}
+
+const onGuildSelectChange = (e: Event) => {
+  const target = e.target as HTMLSelectElement
+  const guildId = target.value
+  if (!guildId) {
+    selectedGuildId.value = ''
+    customGuildName.value = ''
+    selectedGuildIcon.value = null
+    return
+  }
+
+  const userGuilds: UserGuildDTO[] = user.value?.guilds || []
+  const found = userGuilds.find((g) => g.guildId === guildId)
+  if (found) {
+    selectedGuildId.value = found.guildId
+    customGuildName.value = found.name
+    selectedGuildIcon.value = found.icon || null
+  }
+}
 
 const handleTestWebhook = async () => {
   if (!webhookUrl.value) return
@@ -52,7 +144,10 @@ const handleSave = () => {
   emit('save', {
     webhookUrl: webhookUrl.value,
     language: language.value,
-    channelName: channelName.value
+    channelName: channelName.value || customGuildName.value || 'Serveur Discord',
+    guildId: selectedGuildId.value || undefined,
+    guildName: customGuildName.value || undefined,
+    guildIcon: selectedGuildIcon.value || undefined
   })
   emit('close')
 }
@@ -81,11 +176,23 @@ const handleSave = () => {
       </div>
 
       <div class="space-y-4">
-        <!-- Webhook URL input -->
+        <!-- Webhook URL input + Fetch Button -->
         <div>
-          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-            URL du Webhook Discord *
-          </label>
+          <div class="flex items-center justify-between mb-2">
+            <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+              URL du Webhook Discord *
+            </label>
+            <button
+              @click="handleInspectWebhook"
+              :disabled="!webhookUrl || isInspecting"
+              class="px-2.5 py-1 rounded-lg bg-brand-500/10 hover:bg-brand-500/20 text-brand-400 text-[11px] font-bold border border-brand-500/20 flex items-center gap-1 transition-all disabled:opacity-50"
+              title="Interroger l'API Discord pour lier la guilde et récupérer ses infos"
+            >
+              <RefreshCw v-if="isInspecting" class="w-3 h-3 animate-spin" />
+              <Sparkles v-else class="w-3 h-3" />
+              <span>Fetch Infos Guilde</span>
+            </button>
+          </div>
           <input
             v-model="webhookUrl"
             type="text"
@@ -97,15 +204,50 @@ const handleSave = () => {
           </p>
         </div>
 
+        <!-- Inspection Result Alert -->
+        <div v-if="inspectStatus === 'success'" class="p-3 rounded-xl bg-brand-500/10 border border-brand-500/20 text-brand-300 text-xs flex items-center gap-2">
+          <img v-if="selectedGuildIcon" :src="selectedGuildIcon" class="w-5 h-5 rounded-full object-cover border border-brand-400/40" />
+          <Server v-else class="w-4 h-4 text-brand-400 flex-shrink-0" />
+          <span class="font-medium">{{ inspectMessage }}</span>
+        </div>
+        <div v-else-if="inspectStatus === 'error'" class="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center gap-2">
+          <AlertCircle class="w-4 h-4 text-amber-400 flex-shrink-0" />
+          <span>{{ inspectMessage }}</span>
+        </div>
+
+        <!-- Discord Guild Selector / Association -->
+        <div>
+          <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
+            Serveur Discord Associé
+          </label>
+          <select
+            :value="selectedGuildId"
+            @change="onGuildSelectChange"
+            class="w-full glass-input text-xs bg-dark-900"
+          >
+            <option value="">-- Sélectionner ou laisser la guilde détectée --</option>
+            <option
+              v-for="g in (user?.guilds || [])"
+              :key="g.guildId"
+              :value="g.guildId"
+            >
+              {{ g.name }} (ID: {{ g.guildId }})
+            </option>
+          </select>
+          <p class="text-[11px] text-slate-400 mt-1">
+            Permet d'associer ce Webhook à un serveur pour pouvoir filtrer vos webhooks par guilde.
+          </p>
+        </div>
+
         <!-- Optional Channel Name -->
         <div>
           <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider mb-2">
-            Nom du Salon Discord (Optionnel)
+            Nom du Salon / Serveur (Optionnel)
           </label>
           <input
             v-model="channelName"
             type="text"
-            placeholder="#patch-notes"
+            placeholder="#patch-notes ou Général"
             class="w-full glass-input text-xs"
           />
         </div>

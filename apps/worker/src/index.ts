@@ -118,6 +118,7 @@ export async function runNewsCheckPipeline() {
             translatedTitle: translation.translatedTitle,
             translatedContent: translation.translatedContent,
             summary: translation.summary,
+            modelUsed: translation.modelUsed || 'gemini-2.5-flash',
             status: 'SUCCESS'
           },
           create: {
@@ -126,6 +127,7 @@ export async function runNewsCheckPipeline() {
             translatedTitle: translation.translatedTitle,
             translatedContent: translation.translatedContent,
             summary: translation.summary,
+            modelUsed: translation.modelUsed || 'gemini-2.5-flash',
             status: 'SUCCESS'
           }
         });

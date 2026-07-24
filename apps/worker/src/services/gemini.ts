@@ -123,7 +123,8 @@ Réponds STRICTEMENT au format JSON avec les clés suivantes :
                 language: targetLanguage,
                 translatedTitle: finalTitle,
                 translatedContent: finalContent,
-                summary: finalSummary
+                summary: finalSummary,
+                modelUsed: model
               }
             });
           } catch (dbErr) {
@@ -133,7 +134,8 @@ Réponds STRICTEMENT au format JSON avec les clés suivantes :
           return {
             translatedTitle: finalTitle,
             translatedContent: finalContent,
-            summary: finalSummary
+            summary: finalSummary,
+            modelUsed: model
           };
         }
       }
@@ -145,6 +147,7 @@ Réponds STRICTEMENT au format JSON avec les clés suivantes :
   return {
     translatedTitle: title,
     translatedContent: content,
-    summary: 'Résumé indisponible.'
+    summary: 'Résumé indisponible.',
+    modelUsed: 'Gemini Fallback'
   };
 }

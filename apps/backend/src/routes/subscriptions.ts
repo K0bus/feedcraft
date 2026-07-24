@@ -83,6 +83,71 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
     }
   });
 
+  // POST /api/subscriptions/inspect-webhook - Inspect Discord Webhook to retrieve Guild & Channel info
+  fastify.post('/inspect-webhook', async (request, reply) => {
+    const userId = getAuthUserId(request);
+    const { webhookUrl } = (request.body || {}) as { webhookUrl?: string };
+
+    if (!webhookUrl || !webhookUrl.startsWith('https://discord.com/api/webhooks/')) {
+      return reply.badRequest('URL de Webhook Discord invalide');
+    }
+
+    try {
+      const webhookRes = await fetch(webhookUrl, { method: 'GET' });
+      if (!webhookRes.ok) {
+        return reply.status(400).send({ error: `Impossible d'inspecter le Webhook Discord (HTTP ${webhookRes.status})` });
+      }
+
+      const webhookData = (await webhookRes.json()) as {
+        id: string;
+        guild_id?: string;
+        channel_id?: string;
+        name?: string;
+      };
+
+      const guildId = webhookData.guild_id || null;
+      const channelId = webhookData.channel_id || null;
+
+      let matchedGuild: any = null;
+      let guildName: string | null = null;
+      let guildIcon: string | null = null;
+
+      if (guildId && userId) {
+        matchedGuild = await db.userGuild.findUnique({
+          where: {
+            userId_guildId: {
+              userId,
+              guildId
+            }
+          }
+        });
+
+        if (matchedGuild) {
+          guildName = matchedGuild.name;
+          guildIcon = matchedGuild.icon;
+        }
+      }
+
+      return {
+        guildId,
+        guildName: guildName || (guildId ? `Serveur (${guildId.slice(0, 6)}...)` : 'Serveur Inconnu'),
+        guildIcon,
+        channelId,
+        channelName: webhookData.name ? `#${webhookData.name}` : null,
+        matchedGuild: matchedGuild ? {
+          id: matchedGuild.id,
+          guildId: matchedGuild.guildId,
+          name: matchedGuild.name,
+          icon: matchedGuild.icon,
+          owner: matchedGuild.owner,
+          permissions: matchedGuild.permissions
+        } : null
+      };
+    } catch (err: any) {
+      return reply.status(400).send({ error: `Erreur lors de l'inspection Discord: ${err.message}` });
+    }
+  });
+
   // POST /api/subscriptions - Subscribe to an IGDB Game with Discord Webhook
   fastify.post('/', async (request, reply) => {
     let userId = getAuthUserId(request);
@@ -118,11 +183,11 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
       where: { igdbId: body.igdbId },
       update: {
         name: body.gameName,
-        coverUrl: body.coverUrl,
-        artworkUrl: artworkUrl || undefined,
-        steamAppId: body.steamAppId || null,
-        epicSlug: body.epicSlug || null,
-        bnetSlug: body.bnetSlug || null
+        ...(body.coverUrl !== undefined && { coverUrl: body.coverUrl }),
+        ...(artworkUrl ? { artworkUrl } : {}),
+        ...(body.steamAppId !== undefined && { steamAppId: body.steamAppId || null }),
+        ...(body.epicSlug !== undefined && { epicSlug: body.epicSlug || null }),
+        ...(body.bnetSlug !== undefined && { bnetSlug: body.bnetSlug || null })
       },
       create: {
         igdbId: body.igdbId,
@@ -145,14 +210,18 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
       },
       update: {
         discordWebhookUrl: body.discordWebhookUrl,
+        guildId: body.guildId || null,
         guildName: body.guildName || 'Serveur Discord',
+        guildIcon: body.guildIcon || null,
         status: 'ACTIVE'
       },
       create: {
         userId,
         gameId: game.id,
         discordWebhookUrl: body.discordWebhookUrl,
+        guildId: body.guildId || null,
         guildName: body.guildName || 'Serveur Discord',
+        guildIcon: body.guildIcon || null,
         status: 'ACTIVE'
       },
       include: { game: true }
@@ -278,6 +347,7 @@ const subscriptionRoutes: FastifyPluginAsync = async (fastify) => {
           translatedTitle: translation.translatedTitle,
           translatedContent: translation.translatedContent,
           summary: translation.summary,
+          modelUsed: translation.modelUsed || 'gemini-2.5-flash',
           status: webhookRes.ok ? 'SUCCESS' : 'FAILED',
           errorMessage: webhookRes.ok ? null : `Status ${webhookRes.status}`
         }

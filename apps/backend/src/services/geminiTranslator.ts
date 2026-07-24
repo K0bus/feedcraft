@@ -136,7 +136,8 @@ Réponds STRICTEMENT sous la forme d'un objet JSON valide au format suivant :
           return {
             translatedTitle: sanitizeDiscordMarkdown(parsed.translatedTitle || `⚡ ${article.title}`),
             translatedContent: sanitizeDiscordMarkdown(parsed.translatedContent),
-            summary: sanitizeDiscordMarkdown(parsed.summary || 'Résumé des changements de la mise à jour.')
+            summary: sanitizeDiscordMarkdown(parsed.summary || 'Résumé des changements de la mise à jour.'),
+            modelUsed: model
           };
         }
       }
@@ -164,6 +165,7 @@ export function buildFallbackTranslation(article: RawArticle): GeminiTranslation
   return {
     translatedTitle: `⚡ [Patch Note] ${article.title}`,
     translatedContent: `**Nouveautés & Patch Notes** :\n\n${article.content}`,
-    summary: `Nouvelle mise à jour disponible pour ${article.title}.`
+    summary: `Nouvelle mise à jour disponible pour ${article.title}.`,
+    modelUsed: 'Gemini Fallback'
   };
 }

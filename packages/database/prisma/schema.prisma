@@ -19,8 +19,26 @@ model User {
   updatedAt    DateTime @updatedAt
 
   subscriptions Subscription[]
+  guilds        UserGuild[]
 
   @@map("users")
+}
+
+model UserGuild {
+  id          String   @id @default(uuid())
+  userId      String
+  guildId     String
+  name        String
+  icon        String?
+  permissions String?
+  owner       Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, guildId])
+  @@map("user_guilds")
 }
 
 model Game {
@@ -47,7 +65,9 @@ model Subscription {
   userId            String
   gameId            String
   discordWebhookUrl String
+  guildId           String?
   guildName         String?
+  guildIcon         String?
   status            String   @default("ACTIVE") // ACTIVE, INVALID
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -87,6 +107,7 @@ model NewsCache {
   translatedTitle   String
   translatedContent String   @db.Text
   summary           String?  @db.Text
+  modelUsed         String?
   createdAt         DateTime @default(now())
 
   newsFeed NewsFeed @relation(fields: [newsFeedId], references: [id], onDelete: Cascade)
@@ -102,6 +123,7 @@ model DispatchLog {
   translatedTitle   String?
   translatedContent String?  @db.Text
   summary           String?  @db.Text
+  modelUsed         String?
   status            String   @default("SUCCESS") // SUCCESS, FAILED
   errorMessage      String?
   sentAt            DateTime @default(now())

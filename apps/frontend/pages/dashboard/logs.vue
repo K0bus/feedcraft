@@ -6,7 +6,10 @@ import {
   Loader2,
   ExternalLink,
   Bot,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles,
+  Columns,
+  Eye
 } from 'lucide-vue-next'
 
 definePageMeta({
@@ -19,6 +22,9 @@ const apiBaseUrl = config.public.apiBaseUrl || ''
 
 const isLoading = ref(true)
 const rawLogs = ref<any[]>([])
+
+const isCompareModalOpen = ref(false)
+const selectedLogForCompare = ref<any>(null)
 
 const fetchLogs = async () => {
   isLoading.value = true
@@ -35,6 +41,11 @@ const fetchLogs = async () => {
 onMounted(() => {
   fetchLogs()
 })
+
+const openCompareModal = (log: any) => {
+  selectedLogForCompare.value = log
+  isCompareModalOpen.value = true
+}
 
 const formatDate = (dateStr: string) => {
   try {
@@ -91,10 +102,16 @@ const formatDate = (dateStr: string) => {
       >
         <!-- Log top bar -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-dark-700/60 pb-3">
-          <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-3 flex-wrap gap-y-1">
             <span class="font-bold text-white text-base">{{ log.subscription?.game?.name || 'Jeu Inconnu' }}</span>
             <PlatformBadge :platform="log.subscription?.game?.steamAppId ? 'steam' : log.subscription?.game?.epicSlug ? 'epic' : 'bnet'" size="sm" />
             <span class="text-xs text-slate-400">➡️ {{ log.subscription?.guildName || '#webhook' }}</span>
+
+            <!-- AI Model Used Badge -->
+            <span class="px-2 py-0.5 rounded-md bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 text-[11px] font-bold flex items-center gap-1">
+              <Sparkles class="w-3 h-3 text-indigo-400" />
+              <span>{{ log.modelUsed || 'gemini-2.5-flash' }}</span>
+            </span>
           </div>
 
           <div class="flex items-center space-x-3">
@@ -119,18 +136,30 @@ const formatDate = (dateStr: string) => {
           </p>
         </div>
 
-        <!-- Log Footer Link -->
-        <div class="flex items-center justify-between pt-2 text-xs border-t border-dark-700/40">
+        <!-- Log Footer Actions -->
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 text-xs border-t border-dark-700/40">
           <span class="text-slate-500 truncate max-w-xs md:max-w-md">Article source : {{ log.newsFeed?.title || 'Lien d\'origine' }}</span>
-          <a
-            v-if="log.newsFeed?.url"
-            :href="log.newsFeed.url"
-            target="_blank"
-            class="text-brand-400 hover:text-brand-300 font-bold flex items-center space-x-1 transition-colors"
-          >
-            <span>Voir le post d'origine</span>
-            <ExternalLink class="w-3.5 h-3.5" />
-          </a>
+
+          <div class="flex items-center space-x-3">
+            <button
+              @click="openCompareModal(log)"
+              class="px-3 py-1.5 rounded-xl bg-brand-600/20 hover:bg-brand-600/30 text-brand-300 font-bold border border-brand-500/30 text-xs flex items-center gap-1.5 transition-all shadow-sm"
+              title="Comparer le post d'origine et la traduction IA côte à côte"
+            >
+              <Columns class="w-3.5 h-3.5 text-brand-400" />
+              <span>Comparer (Original vs Traduit)</span>
+            </button>
+
+            <a
+              v-if="log.newsFeed?.url"
+              :href="log.newsFeed.url"
+              target="_blank"
+              class="text-slate-400 hover:text-white font-bold flex items-center space-x-1 transition-colors"
+            >
+              <span>Article source</span>
+              <ExternalLink class="w-3.5 h-3.5" />
+            </a>
+          </div>
         </div>
       </div>
     </div>
@@ -141,5 +170,12 @@ const formatDate = (dateStr: string) => {
       <p class="text-base font-semibold text-white">Aucun historique d'envoi en base de données.</p>
       <p class="text-xs">Les messages envoyés par le worker ou déclenchés via "Purger le cache" apparaîtront ici.</p>
     </div>
+
+    <!-- Modal côte-à-côte (CompareLogModal) -->
+    <CompareLogModal
+      :is-open="isCompareModalOpen"
+      :log="selectedLogForCompare"
+      @close="isCompareModalOpen = false"
+    />
   </div>
 </template>

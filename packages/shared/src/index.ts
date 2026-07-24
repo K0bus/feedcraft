@@ -8,6 +8,15 @@ export enum NewsSource {
   IGDB = 'IGDB'
 }
 
+export interface UserGuildDTO {
+  id: string;
+  guildId: string;
+  name: string;
+  icon?: string | null;
+  owner?: boolean;
+  permissions?: string | null;
+}
+
 export interface UserDTO {
   id: string;
   discordId: string;
@@ -16,6 +25,7 @@ export interface UserDTO {
   avatar?: string | null;
   createdAt: string;
   isSuperAdmin?: boolean;
+  guilds?: UserGuildDTO[];
 }
 
 export interface GameDTO {
@@ -38,7 +48,9 @@ export interface SubscriptionDTO {
   userId: string;
   gameId: string;
   discordWebhookUrl: string;
+  guildId?: string | null;
   guildName?: string | null;
+  guildIcon?: string | null;
   status: string;
   createdAt: string;
   game?: GameDTO;
@@ -53,7 +65,18 @@ export interface CreateSubscriptionPayload {
   epicSlug?: string;
   bnetSlug?: string;
   discordWebhookUrl: string;
+  guildId?: string;
   guildName?: string;
+  guildIcon?: string;
+}
+
+export interface InspectWebhookResult {
+  guildId: string | null;
+  guildName: string | null;
+  guildIcon: string | null;
+  channelId: string | null;
+  channelName: string | null;
+  matchedGuild: UserGuildDTO | null;
 }
 
 // Raw News Article Structure
@@ -198,7 +221,31 @@ export interface GeminiTranslationResult {
   translatedTitle: string;
   translatedContent: string;
   summary: string;
+  modelUsed?: string | null;
   detectedLanguage?: string;
+}
+
+export interface DispatchLogDTO {
+  id: string;
+  subscriptionId: string;
+  newsFeedId: string;
+  translatedTitle?: string | null;
+  translatedContent?: string | null;
+  summary?: string | null;
+  modelUsed?: string | null;
+  status: string;
+  errorMessage?: string | null;
+  sentAt: string;
+  subscription?: SubscriptionDTO;
+  newsFeed?: {
+    id: string;
+    title: string;
+    content: string;
+    url: string;
+    publishedAt: string;
+    imageUrl?: string | null;
+    source: string;
+  };
 }
 
 // Admin Interfaces
@@ -220,7 +267,9 @@ export interface AdminWebhookDTO {
   gameName: string;
   gameCoverUrl?: string | null;
   discordWebhookUrl: string;
+  guildId?: string | null;
   guildName?: string | null;
+  guildIcon?: string | null;
   status: string;
   createdAt: string;
   lastDispatchStatus?: string | null;
